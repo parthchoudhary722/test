@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Design Test</title>
+    
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    <link rel="shortcut icon" type ="image/x-icon" href="{{ site.url }}{{ site.baseurl }}/images/favicon.ico">
+
+    <!-- Include required JavaScript libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/github-api/0.10.0/github.min.js"></script>
+    
+    <script>
+        var header_maps = {
+            team: {
+                "Acknowledgement": "acknowledgement",
+                "Department / Center / School": "affiliation",
+                "Alumni?": "alumni",
+                "What do you do now?": "alumni_current",
+                "Short bio 1": "bio1",
+                "Short bio 2": "bio2",
+                "Short bio 3": "bio3",
+                "Short bio 4": "bio4",
+                "Display?": "display",
+                "email": "email",
+                "Image": "image",
+                "Name": "name",
+                "Position": "position",
+                "Timestamp": "timestamp",
+                "Year of joining": "year",
+            }
+        };
+    </script>
+</head>
+<body>
+    <header>
+        <h1>Web Design Test</h1>
+    </header>
+    
+    <main>
+        <section id="update-section" class="section">
+            <h2>Update Spreadsheet</h2>
+            <textarea id="source" cols="50" rows="10" readonly></textarea>
+        </section>
+        
+        <section id="filter-section" class="section">
+            <h2>Filter Lab Members</h2>
+            <label for="position-filter">Filter by Position:</label>
+            <select id="position-filter">
+                <option value="">All</option>
+                <option value="PhD">PhD</option>
+                <option value="MS(R)">MS(R)</option>
+                <option value="UG">UG</option>
+            </select>
+            <div id="members-container"></div>
+        </section>
+    </main>
+
+    <script>
+        // Function to fetch data from Google Sheets, parse it, and update YAML file
+        function fetchDataAndUpdate() {
+            var googleSheetURL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTZBqoNCwfyQzOMDLDakksgHnFcRrww5UmmvjndnUqXQv0o67F5bhaM7gmSvG6MN5bgTqE8bkhJ99V2/pub?output=tsv';
+            var githubToken = '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';
+            var org = 'parthchoudhary722';
+            var repo = 'webdesign-test-template';
+            var branch = 'gh-pages';
+
+            Papa.parse(googleSheetURL, {
+                download: true,
+                header: true,
+                complete: function(results) {
+                    var data = results.data;
+                    var yamlData = jsyaml.dump(data);
+                    document.getElementById('source').value = yamlData;
+
+                    var github = new Github({ token: githubToken, auth: 'oauth' });
+                    var repo = github.getRepo(org, repo);
+                    var filePath = '_data/team.yaml';
+
+                    repo.write(branch, filePath, yamlData, 'Update team data', function(err) {
+                        if (err) {
+                            console.error('Error updating YAML file:', err);
+                        } else {
+                            console.log('YAML file updated successfully.');
+                        }
+                    });
+                }
+            });
+        }
+
+        // Function to filter lab members based on selected position
+        function filterMembersByPosition() {
+            var positionFilter = document.getElementById('position-filter').value;
+            var membersContainer = document.getElementById('members-container');
+            var yamlData = document.getElementById('source').value;
+            var members = jsyaml.load(yamlData);
+
+            // Clear previous members
+            membersContainer.innerHTML = '';
+             // Ensure members is defined and is an array
+    if (Array.isArray(members)) {
+            // Filter and display members based on selected position
+            members.forEach(function(member) {
+                if (!positionFilter || member.Position === positionFilter) {
+                    var memberDiv = document.createElement('div');
+                    memberDiv.textContent = member.Name + ' - ' + member.Position;
+                    membersContainer.appendChild(memberDiv);
+                }
+            });
+        } else {
+        console.error('Error: Members data is not available or is not in the expected format.');
+    }
+}
+
+        // Call the function to fetch and update data on page load
+        window.addEventListener('DOMContentLoaded', function() {
+            fetchDataAndUpdate();
+            filterMembersByPosition(); // Display all members initially
+        });
+
+        // Add event listener to position filter dropdown
+        document.getElementById('position-filter').addEventListener('change', filterMembersByPosition);
+    </script>
+</body>
+</html>
